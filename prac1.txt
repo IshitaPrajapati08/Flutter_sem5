@@ -1,0 +1,554 @@
+
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'ABC & 123 — Fun Learning',
+      theme: ThemeData(
+        primarySwatch: Colors.deepOrange,
+        textTheme: GoogleFonts.poppinsTextTheme(),
+      ),
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  final FlutterTts _tts = FlutterTts();
+  bool _soundOn = true;
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.5); // gentle for kids
+    await _tts.setPitch(1.0);
+  }
+
+  void _onNavTap(int idx) => setState(() => _selectedIndex = idx);
+
+  @override
+  void dispose() {
+    _tts.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      LearnLettersPage(onSpeak: _speak, soundOnGetter: () => _soundOn),
+      LearnNumbersPage(onSpeak: _speak, soundOnGetter: () => _soundOn),
+      QuizPage(onSpeak: _speak, soundOnGetter: () => _soundOn),
+      SettingsPage(
+        soundOn: _soundOn,
+        onToggleSound: () => setState(() => _soundOn = !_soundOn),
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ABC & 123 — Fun Learning'),
+        elevation: 6,
+        centerTitle: true,
+      ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        child: pages[_selectedIndex],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavTap,
+        selectedItemColor: Colors.deepOrange,
+        unselectedItemColor: Colors.grey[600],
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.abc), label: 'Letters'),
+          BottomNavigationBarItem(icon: Icon(Icons.format_list_numbered), label: 'Numbers'),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quiz'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _speak(String text) async {
+    if (!_soundOn) return;
+    await _tts.stop();
+    await _tts.speak(text);
+  }
+}
+
+// ---------------- Learn Letters Page ----------------
+class LearnLettersPage extends StatelessWidget {
+  final Future<void> Function(String) onSpeak;
+  final bool Function() soundOnGetter;
+
+  const LearnLettersPage({super.key, required this.onSpeak, required this.soundOnGetter});
+
+  @override
+  Widget build(BuildContext context) {
+    final letters = List.generate(26, (i) => String.fromCharCode(65 + i));
+
+    return Container(
+      color: Colors.orange[50],
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const Header(title: 'Learn Letters', subtitle: 'Tap a card to hear it and learn a word'),
+          const SizedBox(height: 8),
+          Expanded(
+            child: GridView.builder(
+              itemCount: letters.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                childAspectRatio: 1,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemBuilder: (context, idx) {
+                final l = letters[idx];
+                final example = _exampleForLetter(l);
+                return LetterCard(
+                  label: l,
+                  exampleWord: example,
+                  onTap: () async {
+                    await onSpeak('$l. $example');
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _exampleForLetter(String l) {
+    final map = {
+      'A': 'Apple',
+      'B': 'Ball',
+      'C': 'Cat',
+      'D': 'Dog',
+      'E': 'Elephant',
+      'F': 'Fish',
+      'G': 'Grapes',
+      'H': 'Horse',
+      'I': 'Ice cream',
+      'J': 'Jam',
+      'K': 'Kite',
+      'L': 'Lion',
+      'M': 'Monkey',
+      'N': 'Nest',
+      'O': 'Orange',
+      'P': 'Panda',
+      'Q': 'Queen',
+      'R': 'Rabbit',
+      'S': 'Sun',
+      'T': 'Tiger',
+      'U': 'Umbrella',
+      'V': 'Violin',
+      'W': 'Whale',
+      'X': 'Xylophone',
+      'Y': 'Yacht',
+      'Z': 'Zebra',
+    };
+    return map[l] ?? '';
+  }
+}
+
+class LetterCard extends StatefulWidget {
+  final String label;
+  final String exampleWord;
+  final VoidCallback onTap;
+
+  const LetterCard({super.key, required this.label, required this.exampleWord, required this.onTap});
+
+  @override
+  State<LetterCard> createState() => _LetterCardState();
+}
+
+class _LetterCardState extends State<LetterCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 250), lowerBound: 0.9, upperBound: 1.0);
+    _ctl.value = 1.0;
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _ctl.reverse().then((_) => _ctl.forward());
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Colors.primaries[widget.label.codeUnitAt(0) % Colors.primaries.length];
+    return ScaleTransition(
+      scale: _ctl,
+      child: GestureDetector(
+        onTap: _handleTap,
+        child: Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 6,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(colors: [color.shade200, color.shade400], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(widget.label, style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 6),
+                Text(widget.exampleWord, style: const TextStyle(fontSize: 14, color: Colors.white70)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- Learn Numbers Page ----------------
+class LearnNumbersPage extends StatelessWidget {
+  final Future<void> Function(String) onSpeak;
+  final bool Function() soundOnGetter;
+
+  const LearnNumbersPage({super.key, required this.onSpeak, required this.soundOnGetter});
+
+  @override
+  Widget build(BuildContext context) {
+    final numbers = List.generate(10, (i) => i + 1);
+    return Container(
+      color: Colors.blue[50],
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const Header(title: 'Learn Numbers', subtitle: 'Tap a number to hear it'),
+          const SizedBox(height: 8),
+          Expanded(
+            child: GridView.builder(
+              itemCount: numbers.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                childAspectRatio: 1,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemBuilder: (context, idx) {
+                final n = numbers[idx];
+                return NumberCard(
+                  number: n,
+                  onTap: () async {
+                    await onSpeak('$n');
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class NumberCard extends StatefulWidget {
+  final int number;
+  final VoidCallback onTap;
+
+  const NumberCard({super.key, required this.number, required this.onTap});
+
+  @override
+  State<NumberCard> createState() => _NumberCardState();
+}
+
+class _NumberCardState extends State<NumberCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 250), lowerBound: 0.9, upperBound: 1);
+    _ctl.value = 1;
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _doTap() {
+    _ctl.reverse().then((_) => _ctl.forward());
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Colors.accents[widget.number % Colors.accents.length];
+    return ScaleTransition(
+      scale: _ctl,
+      child: GestureDetector(
+        onTap: _doTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 3))],
+          ),
+          child: Center(
+            child: Text('${widget.number}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- Quiz Page ----------------
+class QuizPage extends StatefulWidget {
+  final Future<void> Function(String) onSpeak;
+  final bool Function() soundOnGetter;
+
+  const QuizPage({super.key, required this.onSpeak, required this.soundOnGetter});
+
+  @override
+  State<QuizPage> createState() => _QuizPageState();
+}
+
+class _QuizPageState extends State<QuizPage> {
+  final Random _rng = Random();
+  late List<_QuizItem> _items;
+  int _index = 0;
+  int _score = 0;
+  bool _showResult = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetQuiz();
+  }
+
+  void _resetQuiz() {
+    _items = _generateItems();
+    _index = 0;
+    _score = 0;
+    _showResult = false;
+    setState(() {});
+  }
+
+  List<_QuizItem> _generateItems() {
+    final letters = List.generate(26, (i) => String.fromCharCode(65 + i));
+    final numbers = List.generate(10, (i) => (i + 1).toString());
+    final pool = [...letters, ...numbers];
+    pool.shuffle(_rng);
+    final chosen = pool.take(8).toList();
+    return chosen.map((s) {
+      final isLetter = RegExp(r'^[A-Z]\$').hasMatch(s);
+      final correct = s;
+      final options = <String>{correct};
+      while (options.length < 4) {
+        options.add(pool[_rng.nextInt(pool.length)]);
+      }
+      final list = options.toList()..shuffle(_rng);
+      return _QuizItem(question: isLetter ? 'Which card is $s ?' : 'Which card is $s ?', correct: correct, options: list);
+    }).toList();
+  }
+
+  void _choose(String chosen) async {
+    final cur = _items[_index];
+    final correct = chosen == cur.correct;
+    if (correct) _score++;
+    await widget.onSpeak(correct ? 'Correct' : 'Try again');
+    if (_index < _items.length - 1) {
+      setState(() => _index++);
+    } else {
+      setState(() => _showResult = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showResult) {
+      return Container(
+        color: Colors.green[50],
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Quiz Finished!', style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 12),
+              Text('Score: $_score / ${_items.length}', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _resetQuiz, child: const Text('Play Again')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final cur = _items[_index];
+    return Container(
+      color: Colors.purple[50],
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          const Header(title: 'Quiz Time!', subtitle: 'Select the correct card'),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Question ${_index + 1} of ${_items.length}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  const SizedBox(height: 8),
+                  Text(cur.question, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: cur.options.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 3.8, crossAxisSpacing: 10, mainAxisSpacing: 10),
+                    itemBuilder: (context, idx) {
+                      final opt = cur.options[idx];
+                      return ElevatedButton(
+                        onPressed: () => _choose(opt),
+                        style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                        child: Text(opt, style: const TextStyle(fontSize: 18)),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuizItem {
+  final String question;
+  final String correct;
+  final List<String> options;
+  _QuizItem({required this.question, required this.correct, required this.options});
+}
+
+// ---------------- Settings Page ----------------
+class SettingsPage extends StatelessWidget {
+  final bool soundOn;
+  final VoidCallback onToggleSound;
+
+  const SettingsPage({super.key, required this.soundOn, required this.onToggleSound});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.teal[50],
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const SizedBox(height: 8),
+          const Header(title: 'Settings', subtitle: 'Customize the experience'),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.volume_up),
+              title: const Text('Sound'),
+              subtitle: Text(soundOn ? 'On' : 'Off'),
+              trailing: Switch(value: soundOn, onChanged: (_) => onToggleSound()),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.palette),
+              title: const Text('Theme tip'),
+              subtitle: const Text('Change colors or add images to make it more personal.'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- Small Widgets ----------------
+class Header extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const Header({super.key, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            ],
+          ),
+        ),
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: Colors.white,
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: const [Icon(Icons.star, size: 18, color: Colors.orange), SizedBox(width: 8), Text('Playful', style: TextStyle(fontSize: 12))],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
