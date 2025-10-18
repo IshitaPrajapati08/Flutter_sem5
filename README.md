@@ -1,16 +1,19 @@
-# practice_app
+# Flutter Projects
 
-A new Flutter project.
+This repository contains multiple Flutter practice projects.
+
+## Projects
+
+### 1. Counter_App
+A simple counter app with increment, decrement, and reset buttons.
+
+### 2. Odd_Even_Counter
+A counter app that displays whether the current number is odd or even.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+To run any project:
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Open the project folder in VS Code.
+2. Run `flutter pub get` to install dependencies.
+3. Run the app on an emulator or physical device with `flutter run`.
